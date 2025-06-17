@@ -1,5 +1,6 @@
 import discord
 import os
+from keep_alive import keep_alive  # 추가
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -18,4 +19,5 @@ async def on_ready():
 async def ping(ctx):
     await ctx.respond("퐁!")
 
+keep_alive()  # 여기에 추가
 bot.run(TOKEN)

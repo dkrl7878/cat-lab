@@ -253,7 +253,7 @@ async def create_raid(
         )
         return
 
-    # 설정된 포럼 채널 객체를 가져옵s니다.
+    # 설정된 포럼 채널 객체를 가져옵니다.
     forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
 
     # 채널이 포럼 채널 타입이 아니거나 찾을 수 없는 경우 오류 처리
@@ -286,7 +286,8 @@ async def create_raid(
 
     try:
         # 명령어를 받았음을 디스코드에 즉시 알려주는 응답 (중복 생성 방지 시도)
-        await interaction.response.defer(ephemeral=False) # ephemral=True 시 사용자에게만 '봇이 생각 중...' 표시
+        # ephemeral=False 로 하여 '봇이 생각 중...' 메시지를 모든 채널 멤버에게 보여줍니다.
+        await interaction.response.defer(ephemeral=False) 
 
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
         new_thread = await forum_channel.create_thread(
@@ -296,16 +297,9 @@ async def create_raid(
             auto_archive_duration=1440 # 24시간 후 자동 아카이브 (분 단위)
         )
         
-        # 게시글이 생성된 후, 그 첫 메시지의 URL을 가져옵니다.
-        # discord.py 2.5.2에서 create_thread는 Thread 객체를 반환하며,
-        # 이 객체에 첫 메시지 ID가 직접 있을 수도 있고, 아니면 fetch_message로 가져와야 합니다.
-        # 가장 안정적인 방법은 생성된 스레드(new_thread)에서 첫 메시지를 명시적으로 가져오는 것입니다.
-        if new_thread.last_message_id: # last_message_id가 더 안정적일 수 있음
-            initial_message = await new_thread.fetch_message(new_thread.last_message_id)
-            jump_url = initial_message.jump_url
-        else:
-            # 첫 메시지 ID를 찾을 수 없는 비상 상황 시 스레드 자체의 URL을 사용
-            jump_url = new_thread.jump_url # Thread 객체 자체의 jump_url은 항상 유효합니다.
+        # 게시글이 생성된 후, 생성된 스레드(new_thread)의 jump_url을 직접 사용합니다.
+        # 이 URL은 해당 스레드(포럼 게시글)의 첫 메시지로 이동하는 링크입니다.
+        jump_url = new_thread.jump_url 
 
         # defer 응답을 따라가는 followup.send 사용
         await interaction.followup.send(

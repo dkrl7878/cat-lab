@@ -286,21 +286,24 @@ async def create_raid(
     )
 
     try:
-        # 먼저 포럼 스레드를 생성합니다. (이때는 내용을 보내지 않습니다.)
-        new_thread = await forum_channel.create_thread(
+        # --- 변경된 부분 시작 ---
+        # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
+        # create_thread는 discord.Thread 객체를 반환하며, 이 객체는 initial_message 속성을 가집니다.
+        thread_with_initial_message = await forum_channel.create_thread(
             name=post_title,
+            content=post_content, # 첫 메시지 내용
+            view=RaidSignupView(), # 첫 메시지에 첨부할 뷰
             auto_archive_duration=1440 # 24시간 후 자동 아카이브 (분 단위)
         )
-        # 생성된 스레드에 첫 메시지를 보내고, 여기에 '참여 신청' 버튼 뷰를 첨부합니다.
-        # await new_thread.send()는 discord.Message 객체를 반환합니다.
-        initial_message = await new_thread.send(content=post_content, view=RaidSignupView())
 
-        # 사용자에게 레이드 모집 글이 성공적으로 생성되었음을 알리고 링크를 제공합니다.
-        # initial_message.jump_url을 사용하여 해당 메시지로 바로 이동하는 링크를 만듭니다.
+        # thread_with_initial_message.initial_message는 discord.Message 객체입니다.
+        # 이 객체의 jump_url 속성을 사용합니다.
         await interaction.response.send_message(
-            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {initial_message.jump_url}",
+            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {thread_with_initial_message.initial_message.jump_url}",
             ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
         )
+        # --- 변경된 부분 끝 ---
+
     except discord.Forbidden:
         # 봇에게 포럼 채널에 게시글을 작성할 권한이 없을 경우
         await interaction.response.send_message(

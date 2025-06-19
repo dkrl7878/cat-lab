@@ -15,7 +15,7 @@ FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID")) # 메시지를 보낼 포�
 # 슬래시 명령어를 사용하더라도 특정 기능에 인텐트가 필요할 수 있습니다.
 intents = discord.Intents.default()
 intents.message_content = True # 일반 메시지 내용을 읽는 데 필요 (개발자 포털에서도 활성화 필요)
-intents.members = True       # 길드 멤버 정보가 필요한 경우 활성화 (개발자 포털에서도 활성화 필요)
+intents.members = True       # 길드 멤버 정보가 필요한 경우 활성화 (개발자 포럼에서도 활성화 필요)
 
 # commands.Bot을 사용하여 봇 객체를 생성합니다.
 # command_prefix는 메시지 기반 명령어를 사용할 때 필요하며, 슬래시 명령어만 사용할 경우 크게 중요하지 않습니다.
@@ -247,6 +247,7 @@ async def create_raid(
         # 날짜 및 시간 유효성 검사 (유효하지 않은 날짜/시간은 ValueError 발생)
         datetime(current_year, 월, 일, 시간 // 100, 시간 % 100)
     except ValueError:
+        # 오류 발생 시, defer 전에 응답을 보내야 하므로 interaction.response.send_message 사용
         await interaction.response.send_message(
             "날짜 또는 시간 형식이 올바르지 않습니다. 월, 일, 시간(HHMM 형식)을 확인해주세요.",
             ephemeral=True # 이 메시지는 명령어를 사용한 사람에게만 보입니다.
@@ -258,6 +259,7 @@ async def create_raid(
 
     # 채널이 포럼 채널 타입이 아니거나 찾을 수 없는 경우 오류 처리
     if not isinstance(forum_channel, discord.ForumChannel):
+        # 오류 발생 시, defer 전에 응답을 보내야 하므로 interaction.response.send_message 사용
         await interaction.response.send_message(
             f"설정된 채널 ID({FORUM_CHANNEL_ID})를 찾을 수 없거나 포럼 채널이 아닙니다. 관리자에게 문의하세요.",
             ephemeral=True
@@ -285,14 +287,11 @@ async def create_raid(
     )
 
     try:
-        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답 (중복 생성 방지 시도)
-        # ephemeral=True 로 하여 '봇이 생각 중...' 메시지를 사용자에게만 보여줍니다.
-        # 이렇게 하면 디스코드 서버가 봇 응답을 기다리면서 명령어를 재시도하는 것을 최소화합니다.
-        await interaction.response.defer(ephemeral=True) 
+        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답
+        # 이제 defer는 오류 발생 여부와 상관없이 무조건 첫 응답으로 보냅니다.
+        await interaction.response.defer(ephemeral=False) 
 
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
-        # create_thread는 discord.Thread 객체를 반환하며, 이 객체는 스레드 자체입니다.
-        # discord.py 2.5.2 기준으로는 initial_message 속성이 직접 존재하지 않을 수 있습니다.
         new_thread = await forum_channel.create_thread(
             name=post_title,
             content=post_content, # 첫 메시지 내용
@@ -301,19 +300,17 @@ async def create_raid(
         )
         
         # 게시글이 생성된 후, 생성된 스레드(new_thread)의 jump_url을 직접 사용합니다.
-        # 이 URL은 해당 스레드(포럼 게시글) 자체로 이동하는 가장 안정적인 링크입니다.
         jump_url = new_thread.jump_url 
 
-        # defer 응답을 따라가는 followup.send 사용
-        # 이제 이 메시지는 원래 defer가 ephemeral=True 였으므로 사용자에게만 보입니다.
+        # defer 응답을 따라가는 followup.send 사용 (성공 메시지)
         await interaction.followup.send(
             f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {jump_url}",
-            ephemeral=True # 이제 성공 메시지도 사용자에게만 보입니다.
+            ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
         )
 
     except discord.Forbidden:
         # 봇에게 포럼 채널에 게시글을 작성할 권한이 없을 경우
-        # defer 응답 후 오류 발생 시 followup.send 사용
+        # 이미 defer 응답을 보냈으므로, followup.send 사용
         await interaction.followup.send(
             "봇이 포럼 채널에 게시글을 작성할 권한이 없습니다. 봇 권한을 확인해주세요.",
             ephemeral=True
@@ -321,7 +318,7 @@ async def create_raid(
         print(f"오류: 봇이 채널 {FORUM_CHANNEL_ID}에 게시글을 작성할 권한이 없습니다.")
     except Exception as e:
         # 그 외 예상치 못한 오류 발생 시, 오류 메시지를 더 자세히 출력합니다.
-        # defer 응답 후 오류 발생 시 followup.send 사용
+        # 이미 defer 응답을 보냈으므로, followup.send 사용
         await interaction.followup.send(
             f"레이드 모집 글 생성 중 오류가 발생했습니다: {e}",
             ephemeral=True

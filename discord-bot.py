@@ -192,13 +192,12 @@ async def on_ready():
     슬래시 명령어를 디스코드에 동기화하는 작업을 수행합니다.
     """
     print(f"[{bot.user}] 봇이 성공적으로 켜졌습니다.")
+    # 현재 사용 중인 discord.py 버전을 출력하여 디버깅에 도움을 줍니다.
+    print(f"discord.py version: {discord.__version__}")
     print("슬래시 명령어 '/레이드생성'과 헬스 체크, 참여 신청 기능이 활성화되었습니다.")
     print("슬래시 명령어를 디스코드에 동기화합니다...")
     try:
         # 슬래시 명령어를 디스코드에 등록(동기화)합니다.
-        # 모든 서버에 전역적으로 동기화하는 경우 최대 1시간 소요될 수 있습니다.
-        # 개발 중에는 특정 길드 ID를 사용하여 빠르게 동기화할 수 있습니다.
-        # (예: GUILD_ID = int(os.getenv("YOUR_GUILD_ID")); await bot.tree.sync(guild=discord.Object(id=GUILD_ID)))
         await bot.tree.sync() # 모든 서버에 동기화 (배포 시 권장)
         print("슬래시 명령어 동기화 완료.")
     except Exception as e:
@@ -286,28 +285,20 @@ async def create_raid(
     )
 
     try:
-        # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
-        # create_thread는 discord.Thread 객체를 반환하며, 이 객체는 first_message_id 속성을 가집니다.
+        # 'ThreadWithInitialMessage' object has no attribute 'initial_message' 오류 해결 시도:
+        # create_thread가 반환하는 Thread 객체 자체의 jump_url을 사용합니다.
+        # 이 객체는 discord.Thread 타입이며, jump_url을 가집니다.
         new_thread = await forum_channel.create_thread(
             name=post_title,
             content=post_content, # 첫 메시지 내용
             view=RaidSignupView(), # 첫 메시지에 첨부할 뷰
             auto_archive_duration=1440 # 24시간 후 자동 아카이브 (분 단위)
         )
-
-        # 오류 수정: new_thread.initial_message 대신
-        # first_message_id를 사용하여 메시지를 직접 가져옵니다.
-        # 이 방식이 discord.py 버전 변화에 더 안정적입니다.
-        if new_thread.first_message_id:
-            initial_message = await new_thread.fetch_message(new_thread.first_message_id)
-            jump_url = initial_message.jump_url
-        else:
-            # 첫 메시지 ID를 찾을 수 없는 경우, 스레드 자체의 URL을 사용합니다.
-            # 이 경우는 발생할 가능성이 매우 낮습니다.
-            jump_url = f"https://discord.com/channels/{new_thread.guild.id}/{new_thread.id}"
-
+        
+        # 이제 new_thread 자체가 스레드를 나타내므로, 그 스레드의 jump_url을 사용합니다.
+        # 이 jump_url은 해당 스레드의 첫 메시지(즉, 게시글)로 이동합니다.
         await interaction.response.send_message(
-            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {jump_url}",
+            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {new_thread.jump_url}",
             ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
         )
 
@@ -364,3 +355,4 @@ if __name__ == '__main__':
         print("봇이 수동으로 종료되었습니다.")
     except Exception as e:
         print(f"예상치 못한 오류 발생: {e}")
+

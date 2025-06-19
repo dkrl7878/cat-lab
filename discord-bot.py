@@ -287,8 +287,7 @@ async def create_raid(
 
     try:
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
-        # create_thread는 discord.ThreadWithInitialMessage 객체를 반환합니다.
-        # 이 객체는 스레드(Thread)와 해당 스레드의 첫 메시지(initial_message)를 모두 포함합니다.
+        # create_thread는 discord.Thread 객체를 반환하며, 이 객체는 first_message_id 속성을 가집니다.
         new_thread = await forum_channel.create_thread(
             name=post_title,
             content=post_content, # 첫 메시지 내용
@@ -296,10 +295,19 @@ async def create_raid(
             auto_archive_duration=1440 # 24시간 후 자동 아카이브 (분 단위)
         )
 
-        # 오류 수정: new_thread 자체가 ThreadWithInitialMessage 객체이므로,
-        # new_thread.initial_message를 사용하여 실제 Message 객체에 접근합니다.
+        # 오류 수정: new_thread.initial_message 대신
+        # first_message_id를 사용하여 메시지를 직접 가져옵니다.
+        # 이 방식이 discord.py 버전 변화에 더 안정적입니다.
+        if new_thread.first_message_id:
+            initial_message = await new_thread.fetch_message(new_thread.first_message_id)
+            jump_url = initial_message.jump_url
+        else:
+            # 첫 메시지 ID를 찾을 수 없는 경우, 스레드 자체의 URL을 사용합니다.
+            # 이 경우는 발생할 가능성이 매우 낮습니다.
+            jump_url = f"https://discord.com/channels/{new_thread.guild.id}/{new_thread.id}"
+
         await interaction.response.send_message(
-            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {new_thread.initial_message.jump_url}",
+            f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {jump_url}",
             ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
         )
 
@@ -356,4 +364,3 @@ if __name__ == '__main__':
         print("봇이 수동으로 종료되었습니다.")
     except Exception as e:
         print(f"예상치 못한 오류 발생: {e}")
-

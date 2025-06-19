@@ -286,9 +286,8 @@ async def create_raid(
     )
 
     try:
-        # --- 변경된 부분 시작 ---
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
-        # create_thread는 discord.Thread 객체를 반환하며, 이 객체는 initial_message 속성을 가집니다.
+        # create_thread는 discord.ThreadWithInitialMessage 객체를 반환합니다.
         thread_with_initial_message = await forum_channel.create_thread(
             name=post_title,
             content=post_content, # 첫 메시지 내용
@@ -302,7 +301,6 @@ async def create_raid(
             f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {thread_with_initial_message.initial_message.jump_url}",
             ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
         )
-        # --- 변경된 부분 끝 ---
 
     except discord.Forbidden:
         # 봇에게 포럼 채널에 게시글을 작성할 권한이 없을 경우
@@ -312,7 +310,8 @@ async def create_raid(
         )
         print(f"오류: 봇이 채널 {FORUM_CHANNEL_ID}에 게시글을 작성할 권한이 없습니다.")
     except Exception as e:
-        # 그 외 예상치 못한 오류 발생 시
+        # 예상치 못한 오류 발생 시, 오류 메시지를 더 자세히 출력합니다.
+        # 'Cannot send an empty message' 오류가 여기서 잡힐 수 있습니다.
         await interaction.response.send_message(
             f"레이드 모집 글 생성 중 오류가 발생했습니다: {e}",
             ephemeral=True

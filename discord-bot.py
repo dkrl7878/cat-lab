@@ -12,7 +12,9 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 # 만약 'GUILD MEMBERS INTENT'나 'MESSAGE CONTENT INTENT' 같은 특권 인텐트를 사용할 계획이라면,
 # 디스코드 개발자 포털에서 해당 인텐트를 활성화해야 합니다.
 intents = discord.Intents.default()
-# intents.message_content = True # 만약 봇이 메시지 내용을 읽어야 한다면 이 줄의 주석을 해제하고, 개발자 포털에서도 활성화해야 합니다.
+# 메시지 내용을 읽기 위한 인텐트를 활성화합니다.
+# 디스코드 개발자 포털에서 'MESSAGE CONTENT INTENT'를 반드시 활성화해야 합니다.
+intents.message_content = True
 # intents.members = True # 만약 봇이 길드 멤버 정보를 필요로 한다면 이 줄의 주석을 해제하고, 개발자 포털에서도 활성화해야 합니다.
 
 # 디스코드 클라이언트 객체를 생성합니다.
@@ -25,8 +27,25 @@ bot = discord.Client(intents=intents)
 @bot.event
 async def on_ready():
     print(f"[{bot.user}] 봇이 성공적으로 켜졌습니다.")
-    print("현재 봇은 헬스 체크 기능 외에 아무런 기능이 없습니다.")
+    print("헬스 체크 기능과 '안녕' 메시지에 응답하는 기능이 활성화되었습니다.")
     print("원하는 기능을 on_message, on_member_join 등의 이벤트 리스너로 추가해 보세요!")
+
+# --- 여기에 on_message 함수를 추가합니다 ---
+@bot.event
+async def on_message(message):
+    # 봇 자신이 보낸 메시지는 무시합니다.
+    if message.author == bot.user:
+        return
+
+    # '안녕'이라는 메시지에 응답합니다.
+    if message.content == "안녕":
+        await message.channel.send("안녕하세요! 반갑습니다.")
+
+    # (이 외에 다른 기능들을 여기에 추가할 수 있습니다.)
+    # 중요: discord.Client를 사용할 때는 봇 명령 처리기를 수동으로 호출해야 할 수 있습니다.
+    # 만약 bot.commands를 사용할 경우, 이 줄이 필요할 수 있습니다:
+    # await bot.process_commands(message)
+
 
 # --- Health check용 웹 서버 및 self-ping 기능 ---
 # Koyeb와 같은 서버리스 환경에서 봇이 유휴 상태로 종료되는 것을 방지하기 위함입니다.

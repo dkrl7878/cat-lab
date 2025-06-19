@@ -287,11 +287,14 @@ async def create_raid(
     )
 
     try:
-        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답
-        # 이제 defer는 오류 발생 여부와 상관없이 무조건 첫 응답으로 보냅니다.
-        await interaction.response.defer(ephemeral=False) 
+        # --- 핵심 변경: interaction.response.defer(ephemeral=True)로 변경 ---
+        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답 (중복 생성 및 Unknown interaction 방지)
+        # ephemeral=True로 설정하여 사용자에게만 '봇이 생각 중...' 메시지를 보여줍니다.
+        # 이렇게 하면 디스코드 서버가 봇 응답을 기다리면서 명령어를 재시도하는 것을 최소화합니다.
+        await interaction.response.defer(ephemeral=True) 
 
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
+        # create_thread는 discord.Thread 객체를 반환합니다.
         new_thread = await forum_channel.create_thread(
             name=post_title,
             content=post_content, # 첫 메시지 내용
@@ -300,12 +303,14 @@ async def create_raid(
         )
         
         # 게시글이 생성된 후, 생성된 스레드(new_thread)의 jump_url을 직접 사용합니다.
+        # discord.py 2.5.2 버전에서 Thread 객체에는 jump_url 속성이 존재해야 합니다.
         jump_url = new_thread.jump_url 
 
         # defer 응답을 따라가는 followup.send 사용 (성공 메시지)
+        # ephemeral=True 이므로 사용자에게만 보입니다.
         await interaction.followup.send(
             f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {jump_url}",
-            ephemeral=False # 이 메시지는 모든 사람이 볼 수 있도록 공개합니다.
+            ephemeral=True 
         )
 
     except discord.Forbidden:
@@ -363,4 +368,3 @@ if __name__ == '__main__':
         print("봇이 수동으로 종료되었습니다.")
     except Exception as e:
         print(f"예상치 못한 오류 발생: {e}")
-

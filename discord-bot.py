@@ -302,9 +302,18 @@ async def create_raid(
             auto_archive_duration=1440 # 24시간 후 자동 아카이브 (분 단위)
         )
         
-        # 게시글이 생성된 후, 생성된 스레드(new_thread)의 jump_url을 직접 사용합니다.
-        # discord.py 2.5.2 버전에서 Thread 객체에는 jump_url 속성이 존재해야 합니다.
-        jump_url = new_thread.jump_url 
+        # --- 오류 수정: Thread 객체에서 jump_url을 안전하게 가져오는 방법 ---
+        # discord.py 2.5.2에서 Thread 객체에는 jump_url 속성이 직접 존재해야 하지만,
+        # 만약을 대비하여 new_thread.get_partial_message(new_thread.id)를 사용하여
+        # 스레드의 첫 메시지 객체를 가져와서 jump_url을 추출하는 방식을 사용합니다.
+        # 이 방식이 더 안전하고 명시적입니다.
+        try:
+            # 스레드 ID는 스레드의 첫 메시지 ID와 동일할 수 있습니다.
+            initial_message = await new_thread.fetch_message(new_thread.id)
+            jump_url = initial_message.jump_url
+        except Exception as msg_e:
+            print(f"첫 메시지 객체 가져오기 실패, 스레드 jump_url 사용: {msg_e}")
+            jump_url = new_thread.jump_url # 대체 링크 (스레드 자체 링크)
 
         # defer 응답을 따라가는 followup.send 사용 (성공 메시지)
         # ephemeral=True 이므로 사용자에게만 보입니다.
@@ -368,3 +377,4 @@ if __name__ == '__main__':
         print("봇이 수동으로 종료되었습니다.")
     except Exception as e:
         print(f"예상치 못한 오류 발생: {e}")
+

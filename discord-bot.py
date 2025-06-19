@@ -287,10 +287,8 @@ async def create_raid(
     )
 
     try:
-        # --- 핵심 변경: interaction.response.defer(ephemeral=True)로 변경 ---
-        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답 (중복 생성 및 Unknown interaction 방지)
+        # 명령어를 받았음을 디스코드에 즉시 알려주는 응답
         # ephemeral=True로 설정하여 사용자에게만 '봇이 생각 중...' 메시지를 보여줍니다.
-        # 이렇게 하면 디스코드 서버가 봇 응답을 기다리면서 명령어를 재시도하는 것을 최소화합니다.
         await interaction.response.defer(ephemeral=True) 
 
         # 포럼 스레드를 생성하며, 첫 메시지의 내용과 뷰를 함께 전달합니다.
@@ -303,20 +301,14 @@ async def create_raid(
         )
         
         # --- 오류 수정: Thread 객체에서 jump_url을 안전하게 가져오는 방법 ---
-        # discord.py 2.5.2에서 Thread 객체에는 jump_url 속성이 직접 존재해야 하지만,
-        # 만약을 대비하여 new_thread.get_partial_message(new_thread.id)를 사용하여
-        # 스레드의 첫 메시지 객체를 가져와서 jump_url을 추출하는 방식을 사용합니다.
-        # 이 방식이 더 안전하고 명시적입니다.
-        try:
-            # 스레드 ID는 스레드의 첫 메시지 ID와 동일할 수 있습니다.
-            initial_message = await new_thread.fetch_message(new_thread.id)
-            jump_url = initial_message.jump_url
-        except Exception as msg_e:
-            print(f"첫 메시지 객체 가져오기 실패, 스레드 jump_url 사용: {msg_e}")
-            jump_url = new_thread.jump_url # 대체 링크 (스레드 자체 링크)
+        # discord.py 2.5.2에서 ForumChannel.create_thread는 discord.Thread 객체를 반환합니다.
+        # 이 Thread 객체 자체에 jump_url 속성이 존재해야 합니다.
+        # 그럼에도 불구하고 'ThreadWithMessage' object has no attribute 'jump_url' 오류가 난다면,
+        # 이는 매우 이상한 상황이며, Koyeb 환경에서 discord.py의 내부 동작이 예상과 다를 수 있습니다.
+        # 여기서는 스레드 객체 자체의 ID를 사용하여 링크를 구성하는 가장 기본적인 방식을 시도합니다.
+        jump_url = f"https://discord.com/channels/{new_thread.guild.id}/{new_thread.id}"
 
         # defer 응답을 따라가는 followup.send 사용 (성공 메시지)
-        # ephemeral=True 이므로 사용자에게만 보입니다.
         await interaction.followup.send(
             f"레이드 모집 글이 포럼 채널에 성공적으로 생성되었습니다: {jump_url}",
             ephemeral=True 
